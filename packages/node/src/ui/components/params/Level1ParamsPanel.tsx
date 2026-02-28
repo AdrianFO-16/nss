@@ -115,7 +115,7 @@ export function Level1ParamsPanel({
   const extinctionGuardActive = metrics?.extinctionGuardActive ?? false
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto pr-1 text-nss-text">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 text-nss-text">
 
       {/* ── Locked-after-start ─────────────────────── */}
       <section className="flex flex-col gap-2">

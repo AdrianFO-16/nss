@@ -32,6 +32,7 @@ export const DEFAULT_LEVEL2_PARAMS: Level2SimulationParams = {
   initialPopulation: 150,
   generationLimit: 200,
   tickRateMs: 500,
+  seed: 0,
   maxPopulation: 600,
   extinctionGuardFactor: 0.5,
   extinctionThresholdRatio: 0.1,

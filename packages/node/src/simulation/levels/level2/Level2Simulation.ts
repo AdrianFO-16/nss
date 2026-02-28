@@ -2,6 +2,7 @@ import { SimulationLevel } from '@/simulation/core/SimulationLevel'
 import type { Lizard } from '@/simulation/core/Lizard'
 import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
 import Stats from '@/simulation/stats/Stats'
+import { seedRng, rngRandom } from '@/simulation/stats/Rng'
 import { Level2Lizard, makePureLizard, type LizardColor } from './Level2Lizard'
 import { DEFAULT_LEVEL2_PARAMS, type Level2SimulationParams } from './Level2SimulationParams'
 import { getNeighbors, countByDominantColor } from './Neighborhood'
@@ -18,6 +19,7 @@ export class Level2Simulation extends SimulationLevel {
   }
 
   initSimulation(): void {
+    seedRng(this.params.seed || (Date.now() & 0xFFFFFFFF))
     this.generation = 0
     this._maxPopReached = false
     this._extinctionGuardActive = false
@@ -27,8 +29,8 @@ export class Level2Simulation extends SimulationLevel {
     const colors: LizardColor[] = ['orange', 'blue', 'yellow']
     for (const color of colors) {
       for (let i = 0; i < perColor; i++) {
-        const x = Math.random() * this.params.worldWidth
-        const y = Math.random() * this.params.worldHeight
+        const x = rngRandom() * this.params.worldWidth
+        const y = rngRandom() * this.params.worldHeight
         this.lizards.push(makePureLizard(color, x, y))
       }
     }
@@ -90,10 +92,10 @@ export class Level2Simulation extends SimulationLevel {
     const newborn: Level2Lizard[] = []
     for (const lizard of survivors) {
       const reproProb = this.computeReproductionProbability(lizard)
-      if (Math.random() < reproProb) {
+      if (rngRandom() < reproProb) {
         lizard.lastTickReproduced = true
-        const x = Math.random() * this.params.worldWidth
-        const y = Math.random() * this.params.worldHeight
+        const x = rngRandom() * this.params.worldWidth
+        const y = rngRandom() * this.params.worldHeight
         newborn.push(lizard.reproduce(this.params, x, y))
       }
     }

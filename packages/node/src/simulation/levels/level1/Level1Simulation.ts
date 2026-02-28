@@ -2,6 +2,7 @@ import { SimulationLevel } from '@/simulation/core/SimulationLevel'
 import type { Lizard } from '@/simulation/core/Lizard'
 import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
 import Stats from '@/simulation/stats/Stats'
+import { seedRng, rngRandom } from '@/simulation/stats/Rng'
 import { Level1Lizard } from './Level1Lizard'
 import { DEFAULT_LEVEL1_PARAMS, type Level1SimulationParams } from './Level1SimulationParams'
 
@@ -17,13 +18,14 @@ export class Level1Simulation extends SimulationLevel {
   }
 
   initSimulation(): void {
+    seedRng(this.params.seed || (Date.now() & 0xFFFFFFFF))
     this.generation = 0
     this._maxPopReached = false
     this._extinctionGuardActive = false
     this.lizards = []
     for (let i = 0; i < this.params.initialPopulation; i++) {
-      const x = Math.random() * this.params.worldWidth
-      const y = Math.random() * this.params.worldHeight
+      const x = rngRandom() * this.params.worldWidth
+      const y = rngRandom() * this.params.worldHeight
       this.lizards.push(new Level1Lizard(x, y, this.params))
     }
   }
@@ -66,10 +68,10 @@ export class Level1Simulation extends SimulationLevel {
     const newborn: Level1Lizard[] = []
     for (const lizard of survivors) {
       const reproProb = this.computeReproductionProbability(lizard)
-      if (Math.random() < reproProb) {
+      if (rngRandom() < reproProb) {
         const parent = lizard as Level1Lizard
-        const x = Math.random() * this.params.worldWidth
-        const y = Math.random() * this.params.worldHeight
+        const x = rngRandom() * this.params.worldWidth
+        const y = rngRandom() * this.params.worldHeight
         newborn.push(parent.reproduce(this.params, x, y))
       }
     }

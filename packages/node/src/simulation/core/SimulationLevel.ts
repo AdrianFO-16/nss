@@ -9,6 +9,8 @@ export interface SimulationLevelParams {
   initialPopulation: number
   generationLimit: number
   tickRateMs: number
+  /** RNG seed. 0 = non-reproducible (uses Date.now() at init time). */
+  seed: number
 }
 
 /**

@@ -22,6 +22,7 @@ export const DEFAULT_LEVEL1_PARAMS: Level1SimulationParams = {
   initialPopulation: 100,
   generationLimit: 100,
   tickRateMs: 500,
+  seed: 0,
   // Body size
   bodySizeDistribution: { type: 'normal', params: { mean: 5, stddev: 1 } },
   // Death

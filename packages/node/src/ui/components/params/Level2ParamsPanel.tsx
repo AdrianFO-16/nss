@@ -20,6 +20,7 @@ interface Level2ParamsPanelProps {
   playerState: PlayerState
   metrics?: MetricSnapshot
   sexualSelectionEnabled: boolean
+  presetSection?: React.ReactNode
   onUpdateParams: (partial: Partial<Level2SimulationParams>) => void
   onSetLevel: (l: SimLevel) => void
   onSetSexualSelectionEnabled: (enabled: boolean) => void
@@ -84,6 +85,7 @@ export function Level2ParamsPanel({
   playerState,
   metrics,
   sexualSelectionEnabled,
+  presetSection,
   onUpdateParams,
   onSetLevel,
   onSetSexualSelectionEnabled,
@@ -93,38 +95,47 @@ export function Level2ParamsPanel({
   const extinctionGuardActive = metrics?.extinctionGuardActive ?? false
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto pr-1 text-nss-text">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 text-nss-text">
 
-      {/* ── Level selector ────────────────────────────── */}
-      <div className="flex flex-col gap-1">
-        <Label className="text-[10px] font-semibold uppercase tracking-widest text-nss-muted">
-          Simulation Level
-        </Label>
-        <Select
-          value="2"
-          onValueChange={(val) => onSetLevel(Number(val) as SimLevel)}
-        >
-          <SelectTrigger className="h-7 border-nss-border bg-nss-bg text-xs text-nss-text">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="border-nss-border bg-nss-surface text-nss-text">
-            <SelectItem value="1" className="text-xs">Level 1: Directional Selection</SelectItem>
-            <SelectItem value="2" className="text-xs">Level 2: RPS Selection</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* ── Fixed header (level selector + presets + addon) ── */}
+      <div className="shrink-0 flex flex-col gap-3">
+
+        {/* Level selector */}
+        <div className="flex flex-col gap-1">
+          <Label className="text-[10px] font-semibold uppercase tracking-widest text-nss-muted">
+            Simulation Level
+          </Label>
+          <Select
+            value="2"
+            onValueChange={(val) => onSetLevel(Number(val) as SimLevel)}
+          >
+            <SelectTrigger className="h-7 border-nss-border bg-nss-bg text-xs text-nss-text">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-nss-border bg-nss-surface text-nss-text">
+              <SelectItem value="1" className="text-xs">Level 1: Directional Selection</SelectItem>
+              <SelectItem value="2" className="text-xs">Level 2: RPS Selection</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {presetSection}
+
+        {/* Addon checkbox */}
+        <div className="flex items-center gap-2">
+          <Switch
+            id="ssa-toggle"
+            checked={sexualSelectionEnabled}
+            onCheckedChange={onSetSexualSelectionEnabled}
+          />
+          <Label htmlFor="ssa-toggle" className="cursor-pointer text-xs text-nss-text">
+            Level 3: Sexual Selection
+          </Label>
+        </div>
       </div>
 
-      {/* ── Addon checkbox ────────────────────────────── */}
-      <div className="flex items-center gap-2">
-        <Switch
-          id="ssa-toggle"
-          checked={sexualSelectionEnabled}
-          onCheckedChange={onSetSexualSelectionEnabled}
-        />
-        <Label htmlFor="ssa-toggle" className="cursor-pointer text-xs text-nss-text">
-          Level 3: Sexual Selection
-        </Label>
-      </div>
+      {/* ── Scrollable params ─────────────────────────── */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
 
       {/* ── Locked-after-start ────────────────────────── */}
       <section className="flex flex-col gap-2">
@@ -273,6 +284,7 @@ export function Level2ParamsPanel({
           Extinction guard active
         </Badge>
       </div>
+      </div>{/* end scrollable params */}
     </div>
   )
 }

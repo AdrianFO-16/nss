@@ -5,6 +5,7 @@ import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
 import type { SimLevel } from '@/ui/hooks/usePlayer'
 import { Level1ParamsPanel } from '@/ui/components/params/Level1ParamsPanel'
 import { Level2ParamsPanel } from '@/ui/components/params/Level2ParamsPanel'
+import { PresetSection } from '@/ui/components/params/PresetSection'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 
@@ -33,6 +34,18 @@ export function ParamsPanel({
   onSetLevel,
   onSetSexualSelectionEnabled,
 }: ParamsPanelProps) {
+  const currentSeed = level === 1 ? (level1Params?.seed ?? 0) : (level2Params?.seed ?? 0)
+
+  const presetSection = onSetLevel && onUpdateLevel1Params && onUpdateLevel2Params ? (
+    <PresetSection
+      level={level}
+      currentSeed={currentSeed}
+      onSetLevel={onSetLevel}
+      onUpdateLevel1Params={onUpdateLevel1Params}
+      onUpdateLevel2Params={onUpdateLevel2Params}
+    />
+  ) : null
+
   return (
     <div className="flex h-full flex-col rounded-lg border border-nss-border bg-nss-surface p-3">
       <span className="mb-3 text-xs font-semibold uppercase tracking-widest text-nss-muted">
@@ -40,9 +53,9 @@ export function ParamsPanel({
       </span>
 
       {level === 1 && level1Params && onUpdateLevel1Params ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-          {/* Level selector at top for L1 */}
-          <div className="flex flex-col gap-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          {/* Level selector — fixed height */}
+          <div className="shrink-0 flex flex-col gap-1">
             <Label className="text-[10px] font-semibold uppercase tracking-widest text-nss-muted">
               Simulation Level
             </Label>
@@ -56,14 +69,22 @@ export function ParamsPanel({
               </SelectContent>
             </Select>
           </div>
-          <Level1ParamsPanel
-            params={level1Params}
-            playerState={playerState}
-            metrics={metrics}
-            onUpdateParams={onUpdateLevel1Params}
-          />
+
+          {/* Preset section — fixed height */}
+          <div className="shrink-0">{presetSection}</div>
+
+          {/* Level1ParamsPanel — takes remaining space, owns its scroll */}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Level1ParamsPanel
+              params={level1Params}
+              playerState={playerState}
+              metrics={metrics}
+              onUpdateParams={onUpdateLevel1Params}
+            />
+          </div>
         </div>
       ) : level === 2 && level2Params && onUpdateLevel2Params && onSetLevel && onSetSexualSelectionEnabled ? (
+        <div className="flex min-h-0 flex-1 flex-col">
         <Level2ParamsPanel
           params={level2Params}
           playerState={playerState}
@@ -72,7 +93,9 @@ export function ParamsPanel({
           onUpdateParams={onUpdateLevel2Params}
           onSetLevel={onSetLevel}
           onSetSexualSelectionEnabled={onSetSexualSelectionEnabled}
+          presetSection={presetSection}
         />
+        </div>
       ) : (
         <div className="flex flex-1 items-center justify-center rounded bg-nss-bg">
           <span className="text-sm text-nss-muted">Loading params…</span>
