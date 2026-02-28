@@ -15,6 +15,7 @@ export default function App() {
     pause,
     restart,
     updateParams,
+    setWorldSize,
   } = usePlayer()
 
   return (
@@ -32,6 +33,7 @@ export default function App() {
       onPause={pause}
       onRestart={restart}
       onUpdateParams={updateParams}
+      onWorldResize={setWorldSize}
     />
   )
 }

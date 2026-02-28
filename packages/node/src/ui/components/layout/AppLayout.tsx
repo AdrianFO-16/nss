@@ -23,6 +23,7 @@ interface AppLayoutProps {
   onPause?: () => void
   onRestart?: () => void
   onUpdateParams?: (partial: Partial<Level1SimulationParams>) => void
+  onWorldResize?: (width: number, height: number) => void
 }
 
 export function AppLayout({
@@ -39,13 +40,14 @@ export function AppLayout({
   onPause,
   onRestart,
   onUpdateParams,
+  onWorldResize,
 }: AppLayoutProps) {
   return (
     <div className="flex h-screen w-screen flex-col gap-2 bg-nss-bg p-2">
       {/* Row 1 — 70%: organism display (60%) + plots (40%) */}
       <div className="flex min-h-0 flex-[7] gap-2">
         <div className="min-w-0 flex-[6]">
-          <OrganismPanel lizards={lizards} />
+          <OrganismPanel lizards={lizards} onWorldResize={onWorldResize} />
         </div>
         <div className="min-w-0 flex-[4]">
           <PlotsPanel history={history} plotSeries={adapter?.getPlotSeries()} />

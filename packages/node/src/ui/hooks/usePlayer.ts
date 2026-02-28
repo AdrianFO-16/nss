@@ -26,6 +26,7 @@ export interface UsePlayerReturn {
   pause: () => void
   restart: () => void
   updateParams: (partial: Partial<Level1SimulationParams>) => void
+  setWorldSize: (width: number, height: number) => void
 }
 
 function makeSimulation(): Level1Simulation {
@@ -106,6 +107,10 @@ export function usePlayer(): UsePlayerReturn {
     }
   }, [])
 
+  const setWorldSize = useCallback((width: number, height: number) => {
+    updateParams({ worldWidth: width, worldHeight: height })
+  }, [updateParams])
+
   return {
     state,
     generation,
@@ -119,5 +124,6 @@ export function usePlayer(): UsePlayerReturn {
     pause,
     restart,
     updateParams,
+    setWorldSize,
   }
 }
