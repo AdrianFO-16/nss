@@ -76,10 +76,13 @@ export function usePlayer(): UsePlayerReturn {
   const adapter1Ref = useRef<Level1UIAdapter>(new Level1UIAdapter(sim1Ref.current))
   const adapter2Ref = useRef<Level2UIAdapter>(new Level2UIAdapter(sim2Ref.current))
   const ssaRef = useRef<SexualSelectionAddon>(new SexualSelectionAddon())
-  const playerRef = useRef<Player>(new Player())
-
-  // Wire player to level 1 by default
-  playerRef.current.setSimulation(sim1Ref.current)
+  // IIFE ensures setSimulation only runs once — a bare call in render body
+  // would re-run on every re-render, silently overwriting any level switch.
+  const playerRef = useRef<Player>((() => {
+    const p = new Player()
+    p.setSimulation(sim1Ref.current)
+    return p
+  })())
 
   // ── React state ──
   const [state, setState] = useState<PlayerState>(PlayerState.IDLE)
@@ -148,8 +151,9 @@ export function usePlayer(): UsePlayerReturn {
       }])
     }
 
-    const es = result.metrics.enabledSuccesses as SexualSelectionStats | undefined
-    if (es) setSexualSelectionStats({ ...es })
+    // Read enabledSuccesses directly from the addon ref — Player emits
+    // simulation.getMetrics() which does not include adapter-level enrichment.
+    setSexualSelectionStats({ ...ssaRef.current.enabledSuccesses })
   }, [])
 
   // ── Level switching ──
