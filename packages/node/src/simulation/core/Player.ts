@@ -13,8 +13,13 @@ export interface PlayerTickResult {
 
 /**
  * State machine that orchestrates the simulation loop.
- * Transitions: IDLE → RUNNING → PAUSED ↔ RUNNING → ENDED
- * Fully implemented in Phase 2.
+ *
+ * Transitions:
+ *   IDLE    → RUNNING  (play() — also calls initSimulation first)
+ *   RUNNING → PAUSED   (pause())
+ *   PAUSED  → RUNNING  (play())
+ *   RUNNING → ENDED    (tick detects generation >= generationLimit)
+ *   any     → IDLE     (restart())
  */
 export class Player {
   private _simulation: SimulationLevel | null = null
@@ -41,26 +46,72 @@ export class Player {
   }
 
   play(): void {
-    // Implemented in Phase 2
+    if (this._state === PlayerState.ENDED) return
+
+    if (this._state === PlayerState.IDLE) {
+      this._initSimulation()
+    }
+
+    if (this._state !== PlayerState.RUNNING) {
+      this._state = PlayerState.RUNNING
+      this._startLoop()
+    }
   }
 
   pause(): void {
-    // Implemented in Phase 2
+    if (this._state !== PlayerState.RUNNING) return
+    this._state = PlayerState.PAUSED
+    this._stopLoop()
   }
 
   restart(): void {
-    // Implemented in Phase 2
+    this._stopLoop()
     this._state = PlayerState.IDLE
   }
 
-  private initSimulation(): void {
-    // Implemented in Phase 2
+  private _initSimulation(): void {
+    if (!this._simulation) return
+    this._simulation.initSimulation()
+    this._addons.forEach(addon => addon.apply(this._simulation!))
   }
 
-  private tickSimulation(): void {
-    // Implemented in Phase 2
+  private _startLoop(): void {
+    if (!this._simulation) return
+    const intervalMs = this._simulation.params.tickRateMs
+    this._intervalId = setInterval(() => {
+      this._tickSimulation()
+    }, intervalMs)
   }
 
-  // Prevent TS unused-private complaints until Phase 2 implements these
-  private _unused = { init: this.initSimulation, tick: this.tickSimulation }
+  private _stopLoop(): void {
+    if (this._intervalId !== null) {
+      clearInterval(this._intervalId)
+      this._intervalId = null
+    }
+  }
+
+  private _tickSimulation(): void {
+    if (!this._simulation) return
+
+    this._simulation.tick()
+
+    for (const addon of this._addons) {
+      addon.apply(this._simulation)
+    }
+
+    const metrics = this._simulation.getMetrics()
+    const lizards = this._simulation.getLizards()
+
+    if (this._simulation.generation >= this._simulation.params.generationLimit) {
+      this._state = PlayerState.ENDED
+      this._stopLoop()
+    }
+
+    this.onTick?.({
+      lizards,
+      generation: this._simulation.generation,
+      metrics,
+      playerState: this._state,
+    })
+  }
 }
