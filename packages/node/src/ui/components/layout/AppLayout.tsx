@@ -1,3 +1,4 @@
+import { Group, Panel, Separator } from 'react-resizable-panels'
 import { PlayerState } from '@/simulation/core/PlayerState'
 import type { Lizard } from '@/simulation/core/Lizard'
 import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
@@ -38,6 +39,29 @@ interface AppLayoutProps {
   onWorldResize?: (width: number, height: number) => void
 }
 
+/**
+ * Vertical drag handle — sits between horizontally adjacent panels.
+ * Renders as a narrow slot; the inner pip highlights on hover / drag.
+ */
+function HResizeHandle() {
+  return (
+    <Separator className="group flex w-2 shrink-0 cursor-col-resize items-center justify-center outline-none">
+      <div className="h-10 w-px rounded-full bg-nss-border transition-colors group-hover:bg-nss-orange group-data-[separator=active]:bg-nss-orange" />
+    </Separator>
+  )
+}
+
+/**
+ * Horizontal drag handle — sits between vertically adjacent panels.
+ */
+function VResizeHandle() {
+  return (
+    <Separator className="group flex h-2 shrink-0 cursor-row-resize items-center justify-center outline-none">
+      <div className="h-px w-10 rounded-full bg-nss-border transition-colors group-hover:bg-nss-orange group-data-[separator=active]:bg-nss-orange" />
+    </Separator>
+  )
+}
+
 export function AppLayout({
   playerState = PlayerState.IDLE,
   generation = 0,
@@ -65,54 +89,65 @@ export function AppLayout({
   onWorldResize,
 }: AppLayoutProps) {
   return (
-    <div className="flex h-screen w-screen flex-col gap-2 bg-nss-bg p-2">
-      {/* Row 1 — 70%: organism display (60%) + plots (40%) */}
-      <div className="flex min-h-0 flex-[7] gap-2">
-        <div className="min-w-0 flex-[6]">
-          <OrganismPanel lizards={lizards} onWorldResize={onWorldResize} />
-        </div>
-        <div className="min-w-0 flex-[4]">
-          <PlotsPanel
-            level={level}
-            history={history}
-            colorHistory={colorHistory}
-            sexualSelectionStats={sexualSelectionStats}
-            sexualSelectionEnabled={sexualSelectionEnabled}
-            bodySizeSnapshot={bodySizeSnapshot}
-            currentBodySizes={currentBodySizes}
-            plotSeries={adapter?.getPlotSeries()}
-          />
-        </div>
-      </div>
+    <div className="h-screen w-screen bg-nss-bg p-2">
+      {/* Outer vertical split: top row (organisms + plots) / bottom row (controls + params) */}
+      <Group orientation="vertical" className="h-full">
+        <Panel defaultSize={70} minSize={25}>
+          {/* Inner horizontal split: organism canvas / plots */}
+          <Group orientation="horizontal" className="h-full">
+            <Panel defaultSize={60} minSize={20}>
+              <OrganismPanel lizards={lizards} onWorldResize={onWorldResize} />
+            </Panel>
+            <HResizeHandle />
+            <Panel defaultSize={40} minSize={15}>
+              <PlotsPanel
+                level={level}
+                history={history}
+                colorHistory={colorHistory}
+                sexualSelectionStats={sexualSelectionStats}
+                sexualSelectionEnabled={sexualSelectionEnabled}
+                bodySizeSnapshot={bodySizeSnapshot}
+                currentBodySizes={currentBodySizes}
+                plotSeries={adapter?.getPlotSeries()}
+              />
+            </Panel>
+          </Group>
+        </Panel>
 
-      {/* Row 2 — 30%: controls (50%) + params (50%) */}
-      <div className="flex min-h-0 flex-[3] gap-2">
-        <div className="min-w-0 flex-1">
-          <ControlsPanel
-            state={playerState}
-            generation={generation}
-            generationLimit={generationLimit}
-            onStart={onStart}
-            onPlay={onPlay}
-            onPause={onPause}
-            onRestart={onRestart}
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <ParamsPanel
-            playerState={playerState}
-            level={level}
-            level1Params={level1Params}
-            level2Params={level2Params}
-            metrics={metrics}
-            sexualSelectionEnabled={sexualSelectionEnabled}
-            onUpdateLevel1Params={onUpdateLevel1Params}
-            onUpdateLevel2Params={onUpdateLevel2Params}
-            onSetLevel={onSetLevel}
-            onSetSexualSelectionEnabled={onSetSexualSelectionEnabled}
-          />
-        </div>
-      </div>
+        <VResizeHandle />
+
+        <Panel defaultSize={30} minSize={15}>
+          {/* Inner horizontal split: controls / params */}
+          <Group orientation="horizontal" className="h-full">
+            <Panel defaultSize={50} minSize={20}>
+              <ControlsPanel
+                state={playerState}
+                generation={generation}
+                generationLimit={generationLimit}
+                onStart={onStart}
+                onPlay={onPlay}
+                onPause={onPause}
+                onRestart={onRestart}
+              />
+            </Panel>
+            <HResizeHandle />
+            <Panel defaultSize={50} minSize={20}>
+              <ParamsPanel
+                playerState={playerState}
+                level={level}
+                level1Params={level1Params}
+                level2Params={level2Params}
+                metrics={metrics}
+                sexualSelectionEnabled={sexualSelectionEnabled}
+                onUpdateLevel1Params={onUpdateLevel1Params}
+                onUpdateLevel2Params={onUpdateLevel2Params}
+                onSetLevel={onSetLevel}
+                onSetSexualSelectionEnabled={onSetSexualSelectionEnabled}
+              />
+            </Panel>
+          </Group>
+        </Panel>
+      </Group>
     </div>
   )
 }
