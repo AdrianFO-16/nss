@@ -10,9 +10,6 @@ import { getNeighbors, countByDominantColor } from './Neighborhood'
 export class Level2Simulation extends SimulationLevel {
   params: Level2SimulationParams
 
-  private _maxPopReached = false
-  private _extinctionGuardActive = false
-
   constructor(params?: Partial<Level2SimulationParams>) {
     super()
     this.params = { ...DEFAULT_LEVEL2_PARAMS, ...params }
@@ -21,8 +18,7 @@ export class Level2Simulation extends SimulationLevel {
   initSimulation(): void {
     seedRng(this.params.seed || (Date.now() & 0xFFFFFFFF))
     this.generation = 0
-    this._maxPopReached = false
-    this._extinctionGuardActive = false
+    this.resetGuards()
     this.lizards = []
 
     const perColor = Math.floor(this.params.initialPopulation / 3)
@@ -73,26 +69,21 @@ export class Level2Simulation extends SimulationLevel {
       l.isNewbornThisTick = false
     }
 
-    // 1. Extinction guard (P-M1)
-    const extinctionThreshold =
-      this.params.extinctionThresholdRatio * this.params.initialPopulation
-    this._extinctionGuardActive = allLizards.length < extinctionThreshold
-    const effectiveDeathThreshold = this._extinctionGuardActive
-      ? Math.min(1, this.params.deathThreshold + this.params.extinctionGuardFactor)
-      : this.params.deathThreshold
+    // 1. Extinction guard
+    const effectiveDeathThreshold = this.checkExtinctionGuard()
 
     // 2. Death phase
     const survivors: Level2Lizard[] = []
     for (const lizard of allLizards) {
-      const deathProb = this.computeDeathProbability(lizard)
-      if (deathProb < effectiveDeathThreshold) survivors.push(lizard)
+      if (this.computeDeathProbability(lizard) < effectiveDeathThreshold) {
+        survivors.push(lizard)
+      }
     }
 
     // 3. Reproduction phase
     const newborn: Level2Lizard[] = []
     for (const lizard of survivors) {
-      const reproProb = this.computeReproductionProbability(lizard)
-      if (rngRandom() < reproProb) {
+      if (rngRandom() < this.computeReproductionProbability(lizard)) {
         lizard.lastTickReproduced = true
         const x = rngRandom() * this.params.worldWidth
         const y = rngRandom() * this.params.worldHeight
@@ -100,25 +91,12 @@ export class Level2Simulation extends SimulationLevel {
       }
     }
 
-    // 4. Max population cap (P-M1)
-    const available = Math.max(0, this.params.maxPopulation - survivors.length)
-    const cappedNewborn = newborn.slice(0, available)
-    this._maxPopReached = newborn.length > available
+    // 4. Max population cap
+    const cappedNewborn = this.applyPopulationCap(survivors, newborn)
 
     // 5. Update and advance
     this.lizards = [...survivors, ...cappedNewborn]
     this.generation++
-  }
-
-  /**
-   * Add extra lizards from an addon (e.g. SexualSelectionAddon).
-   * Respects the max population cap.
-   */
-  addLizards(extra: Level2Lizard[]): void {
-    const available = Math.max(0, this.params.maxPopulation - this.lizards.length)
-    const capped = extra.slice(0, available)
-    this.lizards = [...this.lizards, ...capped]
-    if (extra.length > available) this._maxPopReached = true
   }
 
   /** Returns current lizards typed as Level2Lizard[]. */
