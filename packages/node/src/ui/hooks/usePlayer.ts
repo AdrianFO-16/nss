@@ -6,6 +6,10 @@ import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
 import { Level1Simulation } from '@/simulation/levels/level1/Level1Simulation'
 import { DEFAULT_LEVEL1_PARAMS, type Level1SimulationParams } from '@/simulation/levels/level1/Level1SimulationParams'
 import { Level1UIAdapter } from '@/ui/adapters/Level1UIAdapter'
+import { Level2Simulation } from '@/simulation/levels/level2/Level2Simulation'
+import { DEFAULT_LEVEL2_PARAMS, type Level2SimulationParams } from '@/simulation/levels/level2/Level2SimulationParams'
+import { Level2UIAdapter } from '@/ui/adapters/Level2UIAdapter'
+import { SexualSelectionAddon } from '@/simulation/addons/SexualSelectionAddon'
 
 export interface HistoryEntry {
   generation: number
@@ -13,24 +17,43 @@ export interface HistoryEntry {
   averageBodySize: number
 }
 
+export interface ColorHistoryEntry {
+  generation: number
+  orange: number
+  blue: number
+  yellow: number
+}
+
+export interface SexualSelectionStats {
+  orange: number
+  blue: number
+  yellow: number
+}
+
+export type SimLevel = 1 | 2
+
 export interface UsePlayerReturn {
   state: PlayerState
   generation: number
   lizards: Lizard[]
   metrics: MetricSnapshot
   history: HistoryEntry[]
-  adapter: Level1UIAdapter
-  params: Level1SimulationParams
+  colorHistory: ColorHistoryEntry[]
+  sexualSelectionStats: SexualSelectionStats
+  level: SimLevel
+  adapter: Level1UIAdapter | Level2UIAdapter
+  level1Params: Level1SimulationParams
+  level2Params: Level2SimulationParams
+  sexualSelectionEnabled: boolean
+  setLevel: (l: SimLevel) => void
+  setSexualSelectionEnabled: (enabled: boolean) => void
   start: () => void
   play: () => void
   pause: () => void
   restart: () => void
-  updateParams: (partial: Partial<Level1SimulationParams>) => void
+  updateLevel1Params: (partial: Partial<Level1SimulationParams>) => void
+  updateLevel2Params: (partial: Partial<Level2SimulationParams>) => void
   setWorldSize: (width: number, height: number) => void
-}
-
-function makeSimulation(): Level1Simulation {
-  return new Level1Simulation({ ...DEFAULT_LEVEL1_PARAMS })
 }
 
 const EMPTY_METRICS: MetricSnapshot = {
@@ -38,40 +61,104 @@ const EMPTY_METRICS: MetricSnapshot = {
   totalPopulation: 0,
   maxPopReached: false,
   extinctionGuardActive: false,
-  averageBodySize: 0,
 }
 
-export function usePlayer(): UsePlayerReturn {
-  const simulationRef = useRef<Level1Simulation>(makeSimulation())
-  const adapterRef = useRef<Level1UIAdapter>(new Level1UIAdapter(simulationRef.current))
-  const playerRef = useRef<Player>(() => {
-    const p = new Player()
-    p.setSimulation(simulationRef.current)
-    return p
-  })
+const EMPTY_SSA_STATS: SexualSelectionStats = { orange: 0, blue: 0, yellow: 0 }
 
+export function usePlayer(): UsePlayerReturn {
+  // ── Simulation instances (one of each, swapped on level change) ──
+  const sim1Ref = useRef<Level1Simulation>(new Level1Simulation({ ...DEFAULT_LEVEL1_PARAMS }))
+  const sim2Ref = useRef<Level2Simulation>(new Level2Simulation({ ...DEFAULT_LEVEL2_PARAMS }))
+  const adapter1Ref = useRef<Level1UIAdapter>(new Level1UIAdapter(sim1Ref.current))
+  const adapter2Ref = useRef<Level2UIAdapter>(new Level2UIAdapter(sim2Ref.current))
+  const ssaRef = useRef<SexualSelectionAddon>(new SexualSelectionAddon())
+  const playerRef = useRef<Player>(new Player())
+
+  // Wire player to level 1 by default
+  playerRef.current.setSimulation(sim1Ref.current)
+
+  // ── React state ──
   const [state, setState] = useState<PlayerState>(PlayerState.IDLE)
   const [generation, setGeneration] = useState(0)
   const [lizards, setLizards] = useState<Lizard[]>([])
   const [metrics, setMetrics] = useState<MetricSnapshot>(EMPTY_METRICS)
   const [history, setHistory] = useState<HistoryEntry[]>([])
-  const [params, setParams] = useState<Level1SimulationParams>({ ...DEFAULT_LEVEL1_PARAMS })
+  const [colorHistory, setColorHistory] = useState<ColorHistoryEntry[]>([])
+  const [sexualSelectionStats, setSexualSelectionStats] = useState<SexualSelectionStats>(EMPTY_SSA_STATS)
+  const [level, setLevelState] = useState<SimLevel>(1)
+  const [sexualSelectionEnabled, setSexualSelectionEnabledState] = useState(false)
+  const [level1Params, setLevel1Params] = useState<Level1SimulationParams>({ ...DEFAULT_LEVEL1_PARAMS })
+  const [level2Params, setLevel2Params] = useState<Level2SimulationParams>({ ...DEFAULT_LEVEL2_PARAMS })
 
+  const resetPlayState = useCallback(() => {
+    setState(PlayerState.IDLE)
+    setGeneration(0)
+    setLizards([])
+    setMetrics(EMPTY_METRICS)
+    setHistory([])
+    setColorHistory([])
+    setSexualSelectionStats(EMPTY_SSA_STATS)
+  }, [])
+
+  // ── onTick wired to current player ──
   playerRef.current.onTick = useCallback((result) => {
     setState(result.playerState)
     setGeneration(result.generation)
     setLizards(result.lizards)
     setMetrics(result.metrics)
-    setHistory(prev => [
-      ...prev,
-      {
+
+    const pop = result.metrics.totalPopulation
+    const colorPop = result.metrics.populationByColor as { orange: number; blue: number; yellow: number } | undefined
+
+    setHistory(prev => [...prev, {
+      generation: result.generation,
+      population: pop,
+      averageBodySize: (result.metrics.averageBodySize as number) ?? 0,
+    }])
+
+    if (colorPop) {
+      setColorHistory(prev => [...prev, {
         generation: result.generation,
-        population: result.metrics.totalPopulation,
-        averageBodySize: (result.metrics.averageBodySize as number) ?? 0,
-      },
-    ])
+        orange: colorPop.orange,
+        blue:   colorPop.blue,
+        yellow: colorPop.yellow,
+      }])
+    }
+
+    const es = result.metrics.enabledSuccesses as SexualSelectionStats | undefined
+    if (es) setSexualSelectionStats({ ...es })
   }, [])
 
+  // ── Level switching ──
+  const setLevel = useCallback((l: SimLevel) => {
+    playerRef.current.restart()
+    resetPlayState()
+    setLevelState(l)
+
+    if (l === 1) {
+      playerRef.current.setSimulation(sim1Ref.current)
+      playerRef.current.addons = []
+    } else {
+      playerRef.current.setSimulation(sim2Ref.current)
+      ssaRef.current.reset()
+    }
+  }, [resetPlayState])
+
+  // ── Sexual selection (Level 3) ──
+  const setSexualSelectionEnabled = useCallback((enabled: boolean) => {
+    setSexualSelectionEnabledState(enabled)
+    ssaRef.current.reset()
+
+    if (enabled) {
+      adapter2Ref.current.addon = ssaRef.current
+      playerRef.current.addons = [ssaRef.current]
+    } else {
+      adapter2Ref.current.addon = null
+      playerRef.current.addons = []
+    }
+  }, [])
+
+  // ── Controls ──
   const start = useCallback(() => {
     playerRef.current.play()
     setState(playerRef.current.state)
@@ -89,18 +176,23 @@ export function usePlayer(): UsePlayerReturn {
 
   const restart = useCallback(() => {
     playerRef.current.restart()
-    setState(PlayerState.IDLE)
-    setGeneration(0)
-    setLizards([])
-    setMetrics(EMPTY_METRICS)
-    setHistory([])
+    ssaRef.current.reset()
+    resetPlayState()
+  }, [resetPlayState])
+
+  // ── Param updates ──
+  const updateLevel1Params = useCallback((partial: Partial<Level1SimulationParams>) => {
+    Object.assign(sim1Ref.current.params, partial)
+    setLevel1Params(prev => ({ ...prev, ...partial }))
+    if (partial.tickRateMs !== undefined && playerRef.current.state === PlayerState.RUNNING) {
+      playerRef.current.pause()
+      playerRef.current.play()
+    }
   }, [])
 
-  const updateParams = useCallback((partial: Partial<Level1SimulationParams>) => {
-    Object.assign(simulationRef.current.params, partial)
-    setParams(prev => ({ ...prev, ...partial }))
-
-    // Restart interval if tickRateMs changed while running
+  const updateLevel2Params = useCallback((partial: Partial<Level2SimulationParams>) => {
+    Object.assign(sim2Ref.current.params, partial)
+    setLevel2Params(prev => ({ ...prev, ...partial }))
     if (partial.tickRateMs !== undefined && playerRef.current.state === PlayerState.RUNNING) {
       playerRef.current.pause()
       playerRef.current.play()
@@ -108,8 +200,12 @@ export function usePlayer(): UsePlayerReturn {
   }, [])
 
   const setWorldSize = useCallback((width: number, height: number) => {
-    updateParams({ worldWidth: width, worldHeight: height })
-  }, [updateParams])
+    updateLevel1Params({ worldWidth: width, worldHeight: height })
+    updateLevel2Params({ worldWidth: width, worldHeight: height })
+  }, [updateLevel1Params, updateLevel2Params])
+
+  const adapter: Level1UIAdapter | Level2UIAdapter =
+    level === 1 ? adapter1Ref.current : adapter2Ref.current
 
   return {
     state,
@@ -117,13 +213,21 @@ export function usePlayer(): UsePlayerReturn {
     lizards,
     metrics,
     history,
-    adapter: adapterRef.current,
-    params,
+    colorHistory,
+    sexualSelectionStats,
+    level,
+    adapter,
+    level1Params,
+    level2Params,
+    sexualSelectionEnabled,
+    setLevel,
+    setSexualSelectionEnabled,
     start,
     play,
     pause,
     restart,
-    updateParams,
+    updateLevel1Params,
+    updateLevel2Params,
     setWorldSize,
   }
 }

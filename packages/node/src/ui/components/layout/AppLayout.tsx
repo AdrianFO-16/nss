@@ -2,8 +2,10 @@ import { PlayerState } from '@/simulation/core/PlayerState'
 import type { Lizard } from '@/simulation/core/Lizard'
 import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
 import type { Level1UIAdapter } from '@/ui/adapters/Level1UIAdapter'
+import type { Level2UIAdapter } from '@/ui/adapters/Level2UIAdapter'
 import type { Level1SimulationParams } from '@/simulation/levels/level1/Level1SimulationParams'
-import type { HistoryEntry } from '@/ui/hooks/usePlayer'
+import type { Level2SimulationParams } from '@/simulation/levels/level2/Level2SimulationParams'
+import type { HistoryEntry, ColorHistoryEntry, SexualSelectionStats, SimLevel } from '@/ui/hooks/usePlayer'
 import { OrganismPanel } from './OrganismPanel'
 import { PlotsPanel } from './PlotsPanel'
 import { ControlsPanel } from './ControlsPanel'
@@ -16,13 +18,21 @@ interface AppLayoutProps {
   lizards?: Lizard[]
   metrics?: MetricSnapshot
   history?: HistoryEntry[]
-  adapter?: Level1UIAdapter
-  params?: Level1SimulationParams
+  colorHistory?: ColorHistoryEntry[]
+  sexualSelectionStats?: SexualSelectionStats
+  level?: SimLevel
+  adapter?: Level1UIAdapter | Level2UIAdapter
+  level1Params?: Level1SimulationParams
+  level2Params?: Level2SimulationParams
+  sexualSelectionEnabled?: boolean
   onStart?: () => void
   onPlay?: () => void
   onPause?: () => void
   onRestart?: () => void
-  onUpdateParams?: (partial: Partial<Level1SimulationParams>) => void
+  onUpdateLevel1Params?: (partial: Partial<Level1SimulationParams>) => void
+  onUpdateLevel2Params?: (partial: Partial<Level2SimulationParams>) => void
+  onSetLevel?: (l: SimLevel) => void
+  onSetSexualSelectionEnabled?: (enabled: boolean) => void
   onWorldResize?: (width: number, height: number) => void
 }
 
@@ -33,13 +43,21 @@ export function AppLayout({
   lizards = [],
   metrics,
   history = [],
+  colorHistory = [],
+  sexualSelectionStats = { orange: 0, blue: 0, yellow: 0 },
+  level = 1,
   adapter,
-  params,
+  level1Params,
+  level2Params,
+  sexualSelectionEnabled = false,
   onStart,
   onPlay,
   onPause,
   onRestart,
-  onUpdateParams,
+  onUpdateLevel1Params,
+  onUpdateLevel2Params,
+  onSetLevel,
+  onSetSexualSelectionEnabled,
   onWorldResize,
 }: AppLayoutProps) {
   return (
@@ -50,7 +68,14 @@ export function AppLayout({
           <OrganismPanel lizards={lizards} onWorldResize={onWorldResize} />
         </div>
         <div className="min-w-0 flex-[4]">
-          <PlotsPanel history={history} plotSeries={adapter?.getPlotSeries()} />
+          <PlotsPanel
+            level={level}
+            history={history}
+            colorHistory={colorHistory}
+            sexualSelectionStats={sexualSelectionStats}
+            sexualSelectionEnabled={sexualSelectionEnabled}
+            plotSeries={adapter?.getPlotSeries()}
+          />
         </div>
       </div>
 
@@ -70,9 +95,15 @@ export function AppLayout({
         <div className="min-w-0 flex-1">
           <ParamsPanel
             playerState={playerState}
-            params={params}
+            level={level}
+            level1Params={level1Params}
+            level2Params={level2Params}
             metrics={metrics}
-            onUpdateParams={onUpdateParams}
+            sexualSelectionEnabled={sexualSelectionEnabled}
+            onUpdateLevel1Params={onUpdateLevel1Params}
+            onUpdateLevel2Params={onUpdateLevel2Params}
+            onSetLevel={onSetLevel}
+            onSetSexualSelectionEnabled={onSetSexualSelectionEnabled}
           />
         </div>
       </div>
