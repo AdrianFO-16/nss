@@ -40,6 +40,10 @@ export interface UsePlayerReturn {
   history: HistoryEntry[]
   colorHistory: ColorHistoryEntry[]
   sexualSelectionStats: SexualSelectionStats
+  /** Individual body sizes of the starting population (generation 0, Level 1 only). */
+  bodySizeSnapshot: number[]
+  /** Individual body sizes of the current generation lizards (Level 1 only). */
+  currentBodySizes: number[]
   level: SimLevel
   adapter: Level1UIAdapter | Level2UIAdapter
   level1Params: Level1SimulationParams
@@ -84,6 +88,8 @@ export function usePlayer(): UsePlayerReturn {
   const [metrics, setMetrics] = useState<MetricSnapshot>(EMPTY_METRICS)
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [colorHistory, setColorHistory] = useState<ColorHistoryEntry[]>([])
+  const [bodySizeSnapshot, setBodySizeSnapshot] = useState<number[]>([])
+  const [currentBodySizes, setCurrentBodySizes] = useState<number[]>([])
   const [sexualSelectionStats, setSexualSelectionStats] = useState<SexualSelectionStats>(EMPTY_SSA_STATS)
   const [level, setLevelState] = useState<SimLevel>(1)
   const [sexualSelectionEnabled, setSexualSelectionEnabledState] = useState(false)
@@ -98,6 +104,17 @@ export function usePlayer(): UsePlayerReturn {
     setHistory([])
     setColorHistory([])
     setSexualSelectionStats(EMPTY_SSA_STATS)
+    setBodySizeSnapshot([])
+    setCurrentBodySizes([])
+  }, [])
+
+  // ── onInit: capture body size snapshot at generation 0 ──
+  playerRef.current.onInit = useCallback((initLizards) => {
+    const sizes = initLizards
+      .map(l => (l as Lizard & { bodySize?: number }).bodySize)
+      .filter((s): s is number => s !== undefined)
+    setBodySizeSnapshot(sizes)
+    setCurrentBodySizes(sizes)
   }, [])
 
   // ── onTick wired to current player ──
@@ -109,6 +126,12 @@ export function usePlayer(): UsePlayerReturn {
 
     const pop = result.metrics.totalPopulation
     const colorPop = result.metrics.populationByColor as { orange: number; blue: number; yellow: number } | undefined
+
+    // Track individual body sizes for Level 1 histogram
+    const sizes = result.lizards
+      .map(l => (l as Lizard & { bodySize?: number }).bodySize)
+      .filter((s): s is number => s !== undefined)
+    if (sizes.length > 0) setCurrentBodySizes(sizes)
 
     setHistory(prev => [...prev, {
       generation: result.generation,
@@ -215,6 +238,8 @@ export function usePlayer(): UsePlayerReturn {
     history,
     colorHistory,
     sexualSelectionStats,
+    bodySizeSnapshot,
+    currentBodySizes,
     level,
     adapter,
     level1Params,

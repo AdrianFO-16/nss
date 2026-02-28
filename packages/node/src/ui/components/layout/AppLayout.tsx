@@ -20,6 +20,8 @@ interface AppLayoutProps {
   history?: HistoryEntry[]
   colorHistory?: ColorHistoryEntry[]
   sexualSelectionStats?: SexualSelectionStats
+  bodySizeSnapshot?: number[]
+  currentBodySizes?: number[]
   level?: SimLevel
   adapter?: Level1UIAdapter | Level2UIAdapter
   level1Params?: Level1SimulationParams
@@ -45,6 +47,8 @@ export function AppLayout({
   history = [],
   colorHistory = [],
   sexualSelectionStats = { orange: 0, blue: 0, yellow: 0 },
+  bodySizeSnapshot = [],
+  currentBodySizes = [],
   level = 1,
   adapter,
   level1Params,
@@ -74,6 +78,8 @@ export function AppLayout({
             colorHistory={colorHistory}
             sexualSelectionStats={sexualSelectionStats}
             sexualSelectionEnabled={sexualSelectionEnabled}
+            bodySizeSnapshot={bodySizeSnapshot}
+            currentBodySizes={currentBodySizes}
             plotSeries={adapter?.getPlotSeries()}
           />
         </div>
