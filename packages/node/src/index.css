@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* NSS custom palette */
+@theme {
+  --color-nss-bg: #0f0f0f;
+  --color-nss-surface: #1a1a1a;
+  --color-nss-surface-raised: #222222;
+  --color-nss-border: #2a2a2a;
+  --color-nss-text: #f5f5f5;
+  --color-nss-muted: #888888;
+  --color-nss-orange: #f97316;
+  --color-nss-blue: #3b82f6;
+  --color-nss-yellow: #eab308;
+  --color-nss-white: #ffffff;
+}
+
+/* shadcn/ui semantic tokens — dark-first mapped to NSS palette */
+@theme inline {
+  --color-background: var(--color-nss-bg);
+  --color-foreground: var(--color-nss-text);
+  --color-card: var(--color-nss-surface);
+  --color-card-foreground: var(--color-nss-text);
+  --color-popover: var(--color-nss-surface);
+  --color-popover-foreground: var(--color-nss-text);
+  --color-primary: var(--color-nss-orange);
+  --color-primary-foreground: var(--color-nss-bg);
+  --color-secondary: var(--color-nss-surface-raised);
+  --color-secondary-foreground: var(--color-nss-text);
+  --color-muted: var(--color-nss-surface-raised);
+  --color-muted-foreground: var(--color-nss-muted);
+  --color-accent: var(--color-nss-surface-raised);
+  --color-accent-foreground: var(--color-nss-text);
+  --color-destructive: #ef4444;
+  --color-border: var(--color-nss-border);
+  --color-input: var(--color-nss-border);
+  --color-ring: var(--color-nss-orange);
+  --radius: 0.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  background-color: var(--color-nss-bg);
+  color: var(--color-nss-text);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
