@@ -74,7 +74,7 @@ export class Player {
   private _initSimulation(): void {
     if (!this._simulation) return
     this._simulation.initSimulation()
-    this._addons.forEach(addon => addon.apply(this._simulation!))
+    this._addons.forEach(addon => addon.reset())
     this.onInit?.(this._simulation.getLizards())
   }
 
@@ -95,6 +95,10 @@ export class Player {
 
   private _tickSimulation(): void {
     if (!this._simulation) return
+
+    for (const addon of this._addons) {
+      addon.prepare(this._simulation)
+    }
 
     this._simulation.tick()
 

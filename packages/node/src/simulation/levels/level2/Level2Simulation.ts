@@ -42,31 +42,37 @@ export class Level2Simulation extends SimulationLevel {
     const neighbors = getNeighbors(l2, allLizards, this.params.neighborhoodRadius)
     const neighborColors = countByDominantColor(neighbors)
 
+    let base: number
     switch (l2.dominantColor) {
       case 'orange':
-        return this.params.orangeBaseReproProb
+        base = this.params.orangeBaseReproProb
+        break
 
       case 'blue':
         // Blocked when ≥1 orange within radius (P-M4)
-        return neighborColors.orange === 0
-          ? this.params.blueBaseReproProb
-          : 0
+        base = neighborColors.orange === 0 ? this.params.blueBaseReproProb : 0
+        break
 
       case 'yellow': {
         // Bonus proportional to orange neighbors (P-M4)
-        const bonus = neighborColors.orange * this.params.yellowBonusPerOrangeNeighbor
-        return Math.min(1, this.params.yellowBaseReproProb + bonus)
+        const neighborBonus = neighborColors.orange * this.params.yellowBonusPerOrangeNeighbor
+        base = Math.min(1, this.params.yellowBaseReproProb + neighborBonus)
+        break
       }
     }
+
+    // Add sexual-selection bonus set by SexualSelectionAddon.prepare() (single roll, no double-roll)
+    return Math.min(1, base! + l2.sexualSelectionBonus)
   }
 
   tick(): void {
     const allLizards = this.lizards as Level2Lizard[]
 
-    // Reset ephemeral flags
+    // Reset ephemeral flags (bonus fields are reset by SexualSelectionAddon.prepare())
     for (const l of allLizards) {
       l.lastTickReproduced = false
       l.isNewbornThisTick = false
+      l.lastReproductionRoll = 0
     }
 
     // 1. Extinction guard
@@ -80,10 +86,13 @@ export class Level2Simulation extends SimulationLevel {
       }
     }
 
-    // 3. Reproduction phase
+    // 3. Reproduction phase — single roll, bonus already folded in via computeReproductionProbability
     const newborn: Level2Lizard[] = []
     for (const lizard of survivors) {
-      if (rngRandom() < this.computeReproductionProbability(lizard)) {
+      const totalProb = this.computeReproductionProbability(lizard)
+      const roll = rngRandom()
+      lizard.lastReproductionRoll = roll
+      if (roll < totalProb) {
         lizard.lastTickReproduced = true
         const x = rngRandom() * this.params.worldWidth
         const y = rngRandom() * this.params.worldHeight
