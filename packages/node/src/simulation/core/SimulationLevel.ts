@@ -1,8 +1,9 @@
 import { Simulation } from './Simulation'
+import type { Lizard } from './Lizard'
+import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
 
 /**
- * Params struct — concrete level params extend this.
- * Defined here inline for Phase 1; moved to level-specific files in Phase 2+.
+ * Base params struct — concrete level params extend this.
  */
 export interface SimulationLevelParams {
   initialPopulation: number
@@ -11,10 +12,18 @@ export interface SimulationLevelParams {
 }
 
 /**
- * Abstract intermediate class between Simulation and concrete levels.
- * Adds param-awareness. Was mislabeled <<service>> in the original diagram (P-A2).
+ * Abstract intermediate class between Simulation and concrete levels (P-A2).
+ * Adds param-awareness and the metrics/lizard-access contract used by Player.
  */
 export abstract class SimulationLevel extends Simulation {
   abstract params: SimulationLevelParams
   generation = 0
+
+  /** Returns a shallow copy of the current lizard list for Player and UI consumption. */
+  getLizards(): Lizard[] {
+    return [...this.lizards]
+  }
+
+  /** Returns a metrics snapshot for the current tick. Implemented by each concrete level. */
+  abstract getMetrics(): MetricSnapshot
 }
