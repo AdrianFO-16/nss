@@ -93,6 +93,7 @@ export function Level2ParamsPanel({
   const isIdle = playerState === PlayerState.IDLE
   const maxPopReached = metrics?.maxPopReached ?? false
   const extinctionGuardActive = metrics?.extinctionGuardActive ?? false
+  const colorGuard = (metrics?.colorExtinctionGuardActive ?? {}) as Record<string, boolean>
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 text-nss-text">
@@ -199,9 +200,13 @@ export function Level2ParamsPanel({
               <Slider min={0} max={1} step={0.05} value={[params.yellowBaseReproProb]}
                 onValueChange={([v]) => onUpdateParams({ yellowBaseReproProb: v })} />
             </ParamRow>
-            <ParamRow label={`Yellow Bonus / Orange Neighbor: ${params.yellowBonusPerOrangeNeighbor.toFixed(2)}`}>
-              <Slider min={0} max={0.5} step={0.01} value={[params.yellowBonusPerOrangeNeighbor]}
-                onValueChange={([v]) => onUpdateParams({ yellowBonusPerOrangeNeighbor: v })} />
+            <ParamRow label={`Orange–Yellow Invasion Penalty Max: ${params.orangeYellowInvasionPenaltyMax.toFixed(2)}`}>
+              <Slider min={0} max={1} step={0.01} value={[params.orangeYellowInvasionPenaltyMax]}
+                onValueChange={([v]) => onUpdateParams({ orangeYellowInvasionPenaltyMax: v })} />
+            </ParamRow>
+            <ParamRow label={`Yellow–Orange Bonus Max: ${params.yellowOrangeBonusMax.toFixed(2)}`}>
+              <Slider min={0} max={1} step={0.01} value={[params.yellowOrangeBonusMax]}
+                onValueChange={([v]) => onUpdateParams({ yellowOrangeBonusMax: v })} />
             </ParamRow>
           </AccordionContent>
         </AccordionItem>
@@ -214,6 +219,29 @@ export function Level2ParamsPanel({
             <ParamRow label={`Radius: ${params.neighborhoodRadius} units`}>
               <Slider min={5} max={200} step={5} value={[params.neighborhoodRadius]}
                 onValueChange={([v]) => onUpdateParams({ neighborhoodRadius: v })} />
+            </ParamRow>
+            <ParamRow label={`Offspring Spread: ${params.offspringSpread} units`}>
+              <Slider min={5} max={300} step={5} value={[params.offspringSpread]}
+                onValueChange={([v]) => onUpdateParams({ offspringSpread: v })} />
+            </ParamRow>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="colorGuard" className="border-nss-border">
+          <AccordionTrigger className="py-2 text-xs font-semibold text-nss-text hover:text-nss-orange hover:no-underline">
+            Per-Color Extinction Guard
+          </AccordionTrigger>
+          <AccordionContent className="flex flex-col gap-3 pb-3 pt-1">
+            <p className="text-[10px] text-nss-muted">
+              When a color drops below the threshold, its repro prob is floored to prevent extinction.
+            </p>
+            <ParamRow label={`Threshold Ratio: ${params.colorExtinctionThresholdRatio.toFixed(2)}`}>
+              <Slider min={0} max={0.5} step={0.01} value={[params.colorExtinctionThresholdRatio]}
+                onValueChange={([v]) => onUpdateParams({ colorExtinctionThresholdRatio: v })} />
+            </ParamRow>
+            <ParamRow label={`Repro Floor: ${params.colorExtinctionReproFloor.toFixed(2)}`}>
+              <Slider min={0} max={1} step={0.05} value={[params.colorExtinctionReproFloor]}
+                onValueChange={([v]) => onUpdateParams({ colorExtinctionReproFloor: v })} />
             </ParamRow>
           </AccordionContent>
         </AccordionItem>
@@ -283,6 +311,23 @@ export function Level2ParamsPanel({
         >
           Extinction guard active
         </Badge>
+        {(['orange', 'blue', 'yellow'] as const).map((c) => (
+          <Badge
+            key={c}
+            variant="outline"
+            className={`text-[10px] transition-colors ${
+              colorGuard[c]
+                ? c === 'orange'
+                  ? 'border-nss-orange bg-nss-orange/20 text-nss-orange'
+                  : c === 'blue'
+                  ? 'border-blue-500 bg-blue-500/20 text-blue-400'
+                  : 'border-nss-yellow bg-nss-yellow/20 text-nss-yellow'
+                : 'border-nss-border text-nss-muted opacity-50'
+            }`}
+          >
+            {c} guard
+          </Badge>
+        ))}
       </div>
       </div>{/* end scrollable params */}
     </div>

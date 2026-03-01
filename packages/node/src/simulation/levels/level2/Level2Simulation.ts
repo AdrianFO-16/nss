@@ -10,6 +10,9 @@ import { getNeighbors, countByDominantColor } from './Neighborhood'
 export class Level2Simulation extends SimulationLevel {
   params: Level2SimulationParams
 
+  private _tickColorCounts: Record<LizardColor, number> = { orange: 0, blue: 0, yellow: 0 }
+  private _colorExtinctionGuardActive: Record<LizardColor, boolean> = { orange: false, blue: false, yellow: false }
+
   constructor(params?: Partial<Level2SimulationParams>) {
     super()
     this.params = { ...DEFAULT_LEVEL2_PARAMS, ...params }
@@ -42,23 +45,35 @@ export class Level2Simulation extends SimulationLevel {
     const neighbors = getNeighbors(l2, allLizards, this.params.neighborhoodRadius)
     const neighborColors = countByDominantColor(neighbors)
 
+    const neighborTotal = neighbors.length
+
     let base: number
     switch (l2.dominantColor) {
-      case 'orange':
-        base = this.params.orangeBaseReproProb
+      case 'orange': {
+        const yellowRatio = neighborTotal > 0 ? neighborColors.yellow / neighborTotal : 0
+        const invasionPenalty = yellowRatio * this.params.orangeYellowInvasionPenaltyMax
+        base = Math.max(0, this.params.orangeBaseReproProb - invasionPenalty)
         break
+      }
 
       case 'blue':
-        // Blocked when ≥1 orange within radius (P-M4)
-        base = neighborColors.orange === 0 ? this.params.blueBaseReproProb : 0
+        base = this.params.blueBaseReproProb
+        if (neighborColors.blue === 0 && neighborColors.orange > 0) {
+          base = 0
+        }
         break
 
       case 'yellow': {
-        // Bonus proportional to orange neighbors (P-M4)
-        const neighborBonus = neighborColors.orange * this.params.yellowBonusPerOrangeNeighbor
+        const orangeRatio = neighborTotal > 0 ? neighborColors.orange / neighborTotal : 0
+        const neighborBonus = orangeRatio * this.params.yellowOrangeBonusMax
         base = Math.min(1, this.params.yellowBaseReproProb + neighborBonus)
         break
       }
+    }
+
+    // Per-color extinction guard: lift base to floor if color is critically low
+    if (this._colorExtinctionGuardActive[l2.dominantColor]) {
+      base = Math.max(base!, this.params.colorExtinctionReproFloor)
     }
 
     // Add sexual-selection bonus set by SexualSelectionAddon.prepare() (single roll, no double-roll)
@@ -75,8 +90,16 @@ export class Level2Simulation extends SimulationLevel {
       l.lastReproductionRoll = 0
     }
 
-    // 1. Extinction guard
+    // 1. Extinction guard (global) + per-color guard
     const effectiveDeathThreshold = this.checkExtinctionGuard()
+    const perColorThreshold = Math.floor(
+      (this.params.initialPopulation / 3) * this.params.colorExtinctionThresholdRatio
+    )
+    this._tickColorCounts = countByDominantColor(allLizards)
+    const colors: LizardColor[] = ['orange', 'blue', 'yellow']
+    for (const c of colors) {
+      this._colorExtinctionGuardActive[c] = this._tickColorCounts[c] < perColorThreshold
+    }
 
     // 2. Death phase
     const survivors: Level2Lizard[] = []
@@ -94,16 +117,24 @@ export class Level2Simulation extends SimulationLevel {
       lizard.lastReproductionRoll = roll
       if (roll < totalProb) {
         lizard.lastTickReproduced = true
-        const x = rngRandom() * this.params.worldWidth
-        const y = rngRandom() * this.params.worldHeight
+        const angle = rngRandom() * Math.PI * 2
+        const dist = rngRandom() * this.params.offspringSpread
+        const x = Math.max(0, Math.min(this.params.worldWidth,  lizard.x + Math.cos(angle) * dist))
+        const y = Math.max(0, Math.min(this.params.worldHeight, lizard.y + Math.sin(angle) * dist))
         newborn.push(lizard.reproduce(this.params, x, y))
       }
     }
 
-    // 4. Max population cap
+    // 4. Shuffle newborns so no color monopolises cap slots by list order
+    for (let i = newborn.length - 1; i > 0; i--) {
+      const j = Math.floor(rngRandom() * (i + 1))
+      ;[newborn[i], newborn[j]] = [newborn[j], newborn[i]]
+    }
+
+    // 5. Max population cap
     const cappedNewborn = this.applyPopulationCap(survivors, newborn)
 
-    // 5. Update and advance
+    // 6. Update and advance
     this.lizards = [...survivors, ...cappedNewborn]
     this.generation++
   }
@@ -123,6 +154,7 @@ export class Level2Simulation extends SimulationLevel {
       populationByColor: colorCounts,
       maxPopReached: this._maxPopReached,
       extinctionGuardActive: this._extinctionGuardActive,
+      colorExtinctionGuardActive: { ...this._colorExtinctionGuardActive },
     }
   }
 }
