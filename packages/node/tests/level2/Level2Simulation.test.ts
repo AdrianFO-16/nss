@@ -3,6 +3,7 @@ import { Level2Simulation } from '@/simulation/levels/level2/Level2Simulation'
 import { DEFAULT_LEVEL2_PARAMS, type Level2SimulationParams } from '@/simulation/levels/level2/Level2SimulationParams'
 import { makePureLizard } from '@/simulation/levels/level2/Level2Lizard'
 import { seedRng } from '@/simulation/stats/Rng'
+import { PRESETS } from '@/ui/presets/presets'
 
 function makeSim(overrides: Partial<Level2SimulationParams> = {}): Level2Simulation {
   return new Level2Simulation({ ...DEFAULT_LEVEL2_PARAMS, ...overrides })
@@ -67,12 +68,13 @@ describe('Level2Simulation — RPS mechanics', () => {
     expect(blueReproProb).toBe(0.5)
   })
 
-  it('yellow receives bonus proportional to orange neighbor count', () => {
+  it('yellow receives bonus proportional to orange ratio in neighborhood', () => {
+    // All 2 neighbors are orange → orangeRatio = 1.0 → bonus = yellowOrangeBonusMax × 1.0
     const sim = new Level2Simulation({
       ...DEFAULT_LEVEL2_PARAMS,
       neighborhoodRadius: 100,
       yellowBaseReproProb: 0.25,
-      yellowBonusPerOrangeNeighbor: 0.1,
+      yellowOrangeBonusMax: 0.2,
     })
     const yellow  = makePureLizard('yellow', 50, 50)
     const orange1 = makePureLizard('orange', 55, 50)
@@ -80,43 +82,28 @@ describe('Level2Simulation — RPS mechanics', () => {
     sim['lizards'] = [yellow, orange1, orange2]
 
     const yellowReproProb = sim.computeReproductionProbability(yellow)
-    expect(yellowReproProb).toBeCloseTo(0.45, 5) // 0.25 + 2 × 0.1
+    expect(yellowReproProb).toBeCloseTo(0.45, 5) // 0.25 + 1.0 × 0.2
   })
 
-  it('over 100 ticks dominant color changes — validates RPS cycle', { retry: 3 }, () => {
-    // Fixed seed for reproducibility; retry up to 3× for inherent stochasticity.
-    // Large neighborhood radius puts all lizards in mutual range.
-    // Phase 1: Yellow gets huge bonus from orange neighbors → yellow overtakes orange.
-    // Phase 2: Orange disappears → yellow bonus collapses → blue unblocked (0.8) → blue overtakes.
-    // Phase 3: Blue outgrows → cycle continues.
-    seedRng(42)
-    const sim = makeSim({
-      seed: 42,
-      initialPopulation: 90,
-      neighborhoodRadius: 1000,    // all lizards are each other's neighbors
-      orangeBaseReproProb: 0.5,
-      blueBaseReproProb: 0.8,
-      yellowBaseReproProb: 0.1,
-      yellowBonusPerOrangeNeighbor: 0.05,
-      deathDistribution: { type: 'normal', params: { mean: 0.45, stddev: 0.15 } },
-      deathThreshold: 0.5,
-      maxPopulation: 600,
-    })
+  it('over 300 ticks each color is dominant at least once — validates full RPS cycle (preset: l2-rps-cycle)', { retry: 3 }, () => {
+    const preset = PRESETS.find(p => p.id === 'l2-rps-cycle')!
+    const sim = makeSim({ ...preset.level2Params, generationLimit: 300 })
+    seedRng(preset.seed)
     sim.initSimulation()
 
-    const dominants: string[] = []
-    for (let i = 0; i < 100; i++) {
+    const dominantSet = new Set<string>()
+    for (let i = 0; i < 300; i++) {
       sim.tick()
       const metrics = sim.getMetrics()
       const byColor = metrics.populationByColor as { orange: number; blue: number; yellow: number }
       if (metrics.totalPopulation === 0) break
       const dom = (Object.entries(byColor) as [string, number][]).reduce((a, b) => a[1] >= b[1] ? a : b)[0]
-      dominants.push(dom)
+      dominantSet.add(dom)
     }
 
-    // RPS dynamics: dominant color must shift at least once across 100 ticks
-    const uniqueDominants = new Set(dominants)
-    expect(uniqueDominants.size).toBeGreaterThan(1)
+    expect(dominantSet).toContain('orange')
+    expect(dominantSet).toContain('blue')
+    expect(dominantSet).toContain('yellow')
   })
 
   it('respects max population cap across all colors', () => {
