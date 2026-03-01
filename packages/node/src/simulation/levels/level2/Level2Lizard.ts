@@ -14,8 +14,15 @@ export class Level2Lizard extends Lizard {
   colorWeights: ColorWeights
   /** Reset to false at tick start; set true if this lizard reproduces. */
   lastTickReproduced = false
-  /** Set true when spawned within a tick; used by SexualSelectionAddon to skip newborns. */
+  /** Set true when spawned within a tick; used to skip newborns in prepare(). */
   isNewbornThisTick = false
+  // ── Sexual-selection fields — written by SexualSelectionAddon.prepare() ──
+  /** Base reproduction probability before the bonus (for enabled-success accounting). */
+  sexualSelectionBaseReproProb = 0
+  /** Bonus added to base prob; folded into computeReproductionProbability(). */
+  sexualSelectionBonus = 0
+  /** The actual RNG roll used for the reproduction decision this tick. */
+  lastReproductionRoll = 0
 
   constructor(x: number, y: number, colorWeights: ColorWeights) {
     super(x, y)

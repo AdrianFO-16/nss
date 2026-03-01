@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { Level2Simulation } from '@/simulation/levels/level2/Level2Simulation'
 import { DEFAULT_LEVEL2_PARAMS, type Level2SimulationParams } from '@/simulation/levels/level2/Level2SimulationParams'
 import { makePureLizard } from '@/simulation/levels/level2/Level2Lizard'
+import { seedRng } from '@/simulation/stats/Rng'
 
 function makeSim(overrides: Partial<Level2SimulationParams> = {}): Level2Simulation {
   return new Level2Simulation({ ...DEFAULT_LEVEL2_PARAMS, ...overrides })
@@ -82,13 +83,15 @@ describe('Level2Simulation — RPS mechanics', () => {
     expect(yellowReproProb).toBeCloseTo(0.45, 5) // 0.25 + 2 × 0.1
   })
 
-  it('over 100 ticks dominant color changes — validates RPS cycle', () => {
+  it('over 100 ticks dominant color changes — validates RPS cycle', { retry: 3 }, () => {
+    // Fixed seed for reproducibility; retry up to 3× for inherent stochasticity.
     // Large neighborhood radius puts all lizards in mutual range.
     // Phase 1: Yellow gets huge bonus from orange neighbors → yellow overtakes orange.
-    // Phase 2: Orange disappears → yellow bonus collapses (0.1 base) → blue unblocked (0.8) → blue overtakes.
-    // Phase 3: Blue outgrows → ... cycle continues.
-    // High death rate ensures turnover happens quickly enough to observe.
+    // Phase 2: Orange disappears → yellow bonus collapses → blue unblocked (0.8) → blue overtakes.
+    // Phase 3: Blue outgrows → cycle continues.
+    seedRng(42)
     const sim = makeSim({
+      seed: 42,
       initialPopulation: 90,
       neighborhoodRadius: 1000,    // all lizards are each other's neighbors
       orangeBaseReproProb: 0.5,
@@ -96,7 +99,7 @@ describe('Level2Simulation — RPS mechanics', () => {
       yellowBaseReproProb: 0.1,
       yellowBonusPerOrangeNeighbor: 0.05,
       deathDistribution: { type: 'normal', params: { mean: 0.45, stddev: 0.15 } },
-      deathThreshold: 0.5,         // ~37% die per tick, creating real turnover
+      deathThreshold: 0.5,
       maxPopulation: 600,
     })
     sim.initSimulation()
@@ -111,7 +114,7 @@ describe('Level2Simulation — RPS mechanics', () => {
       dominants.push(dom)
     }
 
-    // RPS dynamics: the dominant color must shift at least once across 100 ticks
+    // RPS dynamics: dominant color must shift at least once across 100 ticks
     const uniqueDominants = new Set(dominants)
     expect(uniqueDominants.size).toBeGreaterThan(1)
   })

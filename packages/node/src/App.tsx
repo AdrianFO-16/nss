@@ -18,6 +18,8 @@ export default function App() {
       history={player.history}
       colorHistory={player.colorHistory}
       sexualSelectionStats={player.sexualSelectionStats}
+      bodySizeSnapshot={player.bodySizeSnapshot}
+      currentBodySizes={player.currentBodySizes}
       level={player.level}
       adapter={player.adapter}
       level1Params={player.level1Params}

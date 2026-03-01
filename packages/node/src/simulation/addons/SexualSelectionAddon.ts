@@ -13,11 +13,23 @@ export interface ColorCounters {
 
 /**
  * Level 3 addon — sexual selection by rare-color advantage (P-M5).
- * Runs after simulation.tick() each generation.
- * For each surviving lizard that did NOT reproduce this tick, draws a
- * frequency-based bonus: bonus = sample(bonusDistribution) × (1 − frequency_c)
- * Rarer colors get a larger bonus. If the bonus pushes their roll over the
- * reproduction threshold, they reproduce and enabledSuccesses[color] is incremented.
+ *
+ * Two-phase lifecycle per tick (no double-roll):
+ *
+ *  prepare()  — runs BEFORE simulation.tick().
+ *    Computes per-color frequencies, then for each eligible lizard (not a
+ *    newborn from the previous tick) stores:
+ *      • sexualSelectionBaseReproProb — base prob without bonus (for accounting)
+ *      • sexualSelectionBonus         — rare-color bonus = magnitude × (1 − freq)
+ *    Level2Simulation.computeReproductionProbability() adds this bonus, so the
+ *    simulation's own roll already includes the sexual-selection pressure.
+ *
+ *  apply()  — runs AFTER simulation.tick().
+ *    Checks lizards that reproduced: if their lastReproductionRoll fell in
+ *    [sexualSelectionBaseReproProb, totalProb) the bonus was the deciding
+ *    factor → increment enabledSuccesses[color].
+ *
+ *  reset()  — called on initSimulation() to clear cumulative counters.
  */
 export class SexualSelectionAddon extends Addon {
   bonusDistribution: Distribution
@@ -35,14 +47,15 @@ export class SexualSelectionAddon extends Addon {
     this.enabledSuccesses = { orange: 0, blue: 0, yellow: 0 }
   }
 
-  apply(simulation: SimulationLevel): void {
+  /** Pre-tick: compute and store per-lizard bonuses for the upcoming single roll. */
+  prepare(simulation: SimulationLevel): void {
     if (!(simulation instanceof Level2Simulation)) return
 
     const lizards = simulation.getLevel2Lizards()
     const total = lizards.length
     if (total === 0) return
 
-    // Compute per-color frequency
+    // Per-color frequency
     const colorCounts: ColorCounters = { orange: 0, blue: 0, yellow: 0 }
     for (const l of lizards) colorCounts[l.dominantColor]++
     const freq: Record<LizardColor, number> = {
@@ -51,34 +64,44 @@ export class SexualSelectionAddon extends Addon {
       yellow: colorCounts.yellow / total,
     }
 
-    const extraOffspring = []
-
     for (const lizard of lizards) {
-      // Skip lizards that already reproduced or were just born this tick
-      if (lizard.lastTickReproduced || lizard.isNewbornThisTick) continue
+      // Reset from previous tick
+      lizard.sexualSelectionBonus = 0
+      lizard.sexualSelectionBaseReproProb = 0
 
-      const color = lizard.dominantColor
+      // Skip lizards born last tick — they haven't been alive a full generation
+      if (lizard.isNewbornThisTick) continue
+
+      // Store the base prob (before bonus) for enabled-success accounting in apply()
+      // At this point lizard.sexualSelectionBonus is still 0, so computeReproductionProbability
+      // returns the unmodified base prob.
+      lizard.sexualSelectionBaseReproProb =
+        simulation.computeReproductionProbability(lizard)
+
       // Bonus inversely proportional to frequency — rarer = larger bonus (P-M5)
       const bonusMagnitude = Math.max(0, Stats.sample(this.bonusDistribution))
-      const bonus = bonusMagnitude * (1 - freq[color])
-      // Base repro prob for this color
-      const baseProb = simulation.computeReproductionProbability(lizard)
-      const totalProb = Math.min(1, baseProb + bonus)
-
-      if (Math.random() < totalProb) {
-        // Would have failed without the bonus — count as enabled success
-        if (Math.random() >= baseProb) {
-          this.enabledSuccesses[color]++
-        }
-        const x = Math.random() * simulation.params.worldWidth
-        const y = Math.random() * simulation.params.worldHeight
-        extraOffspring.push(lizard.reproduce(simulation.params, x, y))
-        lizard.lastTickReproduced = true
-      }
+      lizard.sexualSelectionBonus = bonusMagnitude * (1 - freq[lizard.dominantColor])
     }
+  }
 
-    if (extraOffspring.length > 0) {
-      simulation.addLizards(extraOffspring)
+  /**
+   * Post-tick: scan reproduced lizards and count those for whom the bonus was
+   * the deciding factor (roll fell in the gap [baseProb, baseProb + bonus)).
+   * No new reproduction roll is performed here.
+   */
+  apply(simulation: SimulationLevel): void {
+    if (!(simulation instanceof Level2Simulation)) return
+
+    const lizards = simulation.getLevel2Lizards()
+    for (const lizard of lizards) {
+      if (!lizard.lastTickReproduced || lizard.sexualSelectionBonus <= 0) continue
+
+      const color = lizard.dominantColor
+      // The roll was stored during the single tick reproduction check.
+      // If roll >= baseProb → the bonus (not the base prob) was the deciding factor.
+      if (lizard.lastReproductionRoll >= lizard.sexualSelectionBaseReproProb) {
+        this.enabledSuccesses[color]++
+      }
     }
   }
 }

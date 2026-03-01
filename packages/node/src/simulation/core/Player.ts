@@ -28,6 +28,8 @@ export class Player {
   private _intervalId: ReturnType<typeof setInterval> | null = null
 
   onTick: ((result: PlayerTickResult) => void) | null = null
+  /** Fired once after initSimulation(), before the first tick. */
+  onInit: ((lizards: Lizard[]) => void) | null = null
 
   get state(): PlayerState {
     return this._state
@@ -72,7 +74,8 @@ export class Player {
   private _initSimulation(): void {
     if (!this._simulation) return
     this._simulation.initSimulation()
-    this._addons.forEach(addon => addon.apply(this._simulation!))
+    this._addons.forEach(addon => addon.reset())
+    this.onInit?.(this._simulation.getLizards())
   }
 
   private _startLoop(): void {
@@ -92,6 +95,10 @@ export class Player {
 
   private _tickSimulation(): void {
     if (!this._simulation) return
+
+    for (const addon of this._addons) {
+      addon.prepare(this._simulation)
+    }
 
     this._simulation.tick()
 

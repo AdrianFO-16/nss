@@ -1,7 +1,7 @@
 import type { HistoryEntry, ColorHistoryEntry, SexualSelectionStats, SimLevel } from '@/ui/hooks/usePlayer'
 import type { PlotSeries } from '@/ui/adapters/UISimulationAdapter'
 import { PopulationPlot } from '@/ui/components/plots/PopulationPlot'
-import { BodySizePlot } from '@/ui/components/plots/BodySizePlot'
+import { BodySizeKDEPlot } from '@/ui/components/plots/BodySizeKDEPlot'
 import { ColorPopulationPlot } from '@/ui/components/plots/ColorPopulationPlot'
 import { SexualSelectionBarChart } from '@/ui/components/plots/SexualSelectionBarChart'
 
@@ -11,6 +11,8 @@ interface PlotsPanelProps {
   colorHistory?: ColorHistoryEntry[]
   sexualSelectionStats?: SexualSelectionStats
   sexualSelectionEnabled?: boolean
+  bodySizeSnapshot?: number[]
+  currentBodySizes?: number[]
   plotSeries?: PlotSeries[]
 }
 
@@ -20,6 +22,8 @@ export function PlotsPanel({
   colorHistory = [],
   sexualSelectionStats = { orange: 0, blue: 0, yellow: 0 },
   sexualSelectionEnabled = false,
+  bodySizeSnapshot = [],
+  currentBodySizes = [],
   plotSeries: _plotSeries,
 }: PlotsPanelProps) {
   return (
@@ -34,7 +38,7 @@ export function PlotsPanel({
             <PopulationPlot history={history} />
           </div>
           <div className="min-h-0 flex-1">
-            <BodySizePlot history={history} />
+            <BodySizeKDEPlot snapshot={bodySizeSnapshot} current={currentBodySizes} />
           </div>
         </div>
       ) : (

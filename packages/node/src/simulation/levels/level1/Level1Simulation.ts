@@ -1,15 +1,13 @@
 import { SimulationLevel } from '@/simulation/core/SimulationLevel'
-import type { Lizard } from '@/simulation/core/Lizard'
 import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
 import Stats from '@/simulation/stats/Stats'
+import { seedRng, rngRandom } from '@/simulation/stats/Rng'
 import { Level1Lizard } from './Level1Lizard'
 import { DEFAULT_LEVEL1_PARAMS, type Level1SimulationParams } from './Level1SimulationParams'
+import type { Lizard } from '@/simulation/core/Lizard'
 
 export class Level1Simulation extends SimulationLevel {
   params: Level1SimulationParams
-
-  private _maxPopReached = false
-  private _extinctionGuardActive = false
 
   constructor(params?: Partial<Level1SimulationParams>) {
     super()
@@ -17,13 +15,13 @@ export class Level1Simulation extends SimulationLevel {
   }
 
   initSimulation(): void {
+    seedRng(this.params.seed || (Date.now() & 0xFFFFFFFF))
     this.generation = 0
-    this._maxPopReached = false
-    this._extinctionGuardActive = false
+    this.resetGuards()
     this.lizards = []
     for (let i = 0; i < this.params.initialPopulation; i++) {
-      const x = Math.random() * this.params.worldWidth
-      const y = Math.random() * this.params.worldHeight
+      const x = rngRandom() * this.params.worldWidth
+      const y = rngRandom() * this.params.worldHeight
       this.lizards.push(new Level1Lizard(x, y, this.params))
     }
   }
@@ -45,19 +43,13 @@ export class Level1Simulation extends SimulationLevel {
   }
 
   tick(): void {
-    // 1. Extinction guard check (P-M1)
-    const extinctionThreshold =
-      this.params.extinctionThresholdRatio * this.params.initialPopulation
-    this._extinctionGuardActive = this.lizards.length < extinctionThreshold
-    const effectiveDeathThreshold = this._extinctionGuardActive
-      ? Math.min(1, this.params.deathThreshold + this.params.extinctionGuardFactor)
-      : this.params.deathThreshold
+    // 1. Extinction guard
+    const effectiveDeathThreshold = this.checkExtinctionGuard()
 
     // 2. Death phase
     const survivors: Lizard[] = []
     for (const lizard of this.lizards) {
-      const deathProb = this.computeDeathProbability(lizard)
-      if (deathProb < effectiveDeathThreshold) {
+      if (this.computeDeathProbability(lizard) < effectiveDeathThreshold) {
         survivors.push(lizard)
       }
     }
@@ -65,19 +57,16 @@ export class Level1Simulation extends SimulationLevel {
     // 3. Reproduction phase
     const newborn: Level1Lizard[] = []
     for (const lizard of survivors) {
-      const reproProb = this.computeReproductionProbability(lizard)
-      if (Math.random() < reproProb) {
+      if (rngRandom() < this.computeReproductionProbability(lizard)) {
         const parent = lizard as Level1Lizard
-        const x = Math.random() * this.params.worldWidth
-        const y = Math.random() * this.params.worldHeight
+        const x = rngRandom() * this.params.worldWidth
+        const y = rngRandom() * this.params.worldHeight
         newborn.push(parent.reproduce(this.params, x, y))
       }
     }
 
-    // 4. Max population cap (P-M1)
-    const available = Math.max(0, this.params.maxPopulation - survivors.length)
-    const cappedNewborn = newborn.slice(0, available)
-    this._maxPopReached = newborn.length > available
+    // 4. Max population cap
+    const cappedNewborn = this.applyPopulationCap(survivors, newborn)
 
     // 5. Update lizard list and advance generation
     this.lizards = [...survivors, ...cappedNewborn]

@@ -48,6 +48,7 @@ body,
   padding: 0;
   height: 100%;
   width: 100%;
+  overflow: hidden;
   background-color: var(--color-nss-bg);
   color: var(--color-nss-text);
   font-family: system-ui, -apple-system, sans-serif;
