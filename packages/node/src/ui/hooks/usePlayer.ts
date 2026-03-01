@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { Player } from '@/simulation/core/Player'
+import type { PlayerTickResult } from '@/simulation/core/Player'
 import { PlayerState } from '@/simulation/core/PlayerState'
 import type { Lizard } from '@/simulation/core/Lizard'
 import type { MetricSnapshot } from '@/ui/adapters/UISimulationAdapter'
@@ -112,7 +113,7 @@ export function usePlayer(): UsePlayerReturn {
   }, [])
 
   // ── onInit: capture body size snapshot at generation 0 ──
-  playerRef.current.onInit = useCallback((initLizards) => {
+  playerRef.current.onInit = useCallback((initLizards: Lizard[]) => {
     const sizes = initLizards
       .map(l => (l as Lizard & { bodySize?: number }).bodySize)
       .filter((s): s is number => s !== undefined)
@@ -121,7 +122,7 @@ export function usePlayer(): UsePlayerReturn {
   }, [])
 
   // ── onTick wired to current player ──
-  playerRef.current.onTick = useCallback((result) => {
+  playerRef.current.onTick = useCallback((result: PlayerTickResult) => {
     setState(result.playerState)
     setGeneration(result.generation)
     setLizards(result.lizards)

@@ -42,7 +42,7 @@ export function BodySizePlot({ history }: BodySizePlotProps) {
             contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6 }}
             labelStyle={{ color: '#888888', fontSize: 10 }}
             itemStyle={{ color: '#f5f5f5', fontSize: 11 }}
-            formatter={(v: number) => v.toFixed(3)}
+            formatter={(v) => (v as number).toFixed(3)}
           />
           <Line
             type="monotone"

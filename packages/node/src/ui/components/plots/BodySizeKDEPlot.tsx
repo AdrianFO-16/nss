@@ -111,7 +111,7 @@ export function BodySizeKDEPlot({ snapshot, current }: BodySizeKDEPlotProps) {
             contentStyle={{ background: '#1a1a2e', border: '1px solid #2d2d44', borderRadius: 4, fontSize: 10 }}
             labelStyle={{ color: '#a0a0b8' }}
             labelFormatter={(v) => `Size ${v}`}
-            formatter={(v: number) => v.toFixed(4)}
+            formatter={(v) => (v as number).toFixed(4)}
           />
           <Legend wrapperStyle={{ fontSize: 9, color: '#6b7280', paddingTop: 2 }} iconSize={8} />
 

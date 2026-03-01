@@ -1,6 +1,5 @@
 import { Lizard } from '@/simulation/core/Lizard'
 import Stats from '@/simulation/stats/Stats'
-import { rngRandom } from '@/simulation/stats/Rng'
 import type { Level1SimulationParams } from './Level1SimulationParams'
 
 export class Level1Lizard extends Lizard {
