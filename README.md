@@ -40,7 +40,7 @@ bun run dev
 Tests:
 
 ```bash
-cd packages/node && bun x vitest run
+cd packages/node && bun run test
 ```
 
 ## Project structure
