@@ -133,7 +133,7 @@ describe('Level1Simulation — getMetrics', () => {
   })
 
   it('averageBodySize is a positive number after init', () => {
-    const { averageBodySize } = sim.getMetrics() as { averageBodySize: number }
+    const { averageBodySize } = sim.getMetrics() as unknown as { averageBodySize: number }
     expect(averageBodySize).toBeGreaterThan(0)
   })
 
